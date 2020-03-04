@@ -2,7 +2,11 @@
 
 import rospy
 from std_msgs.msg import String
+import goldo_msgs.msg
+import math
+from enum import Enum
 
+import goldo_main.commands
 
 
 
@@ -10,9 +14,18 @@ from std_msgs.msg import String
 
 
 def talker():
+    pub_markers = rospy.Publisher('markers', goldo_msgs.msg.Markers, queue_size=10, latch=True)
     pub = rospy.Publisher('chatter', String, queue_size=10)
-    rospy.init_node('talker', anonymous=True)
+    rospy.init_node('goldo_main')
     rate = rospy.Rate(10) # 10hz
+    
+    markers = rospy.get_param('markers')
+    markers_msg = goldo_msgs.msg.Markers()
+    markers_msg.markers = [goldo_msgs.msg.Marker(id=k, type=0, position=goldo_msgs.msg.Vector2D(v['x']*0.001, v['y']*0.001), yaw=v['yaw'] * math.pi/180) for k,v in markers.items()]    
+    pub_markers.publish(markers_msg)
+    
+
+    
     while not rospy.is_shutdown():
         hello_str = "hello world %s" % rospy.get_time()
         rospy.loginfo(hello_str)
