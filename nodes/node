@@ -1,35 +1,47 @@
 #!/usr/bin/env python
 
 import rospy
+import rospkg
 from std_msgs.msg import String
 import goldo_msgs.msg
+import goldo_msgs.srv
 import math
 from enum import Enum
 
 import goldo_main.commands
 
 
-
-
-
-
 def talker():
     pub_markers = rospy.Publisher('markers', goldo_msgs.msg.Markers, queue_size=10, latch=True)
-    pub = rospy.Publisher('chatter', String, queue_size=10)
+    pub_polygons = rospy.Publisher('polygons', goldo_msgs.msg.Polygons, queue_size=10, latch=True)
+    
     rospy.init_node('goldo_main')
     rate = rospy.Rate(10) # 10hz
     
-    markers = rospy.get_param('markers')
+    if rospy.has_param('markers'):
+        markers = rospy.get_param('markers')
+    else:
+        markers = {}
     markers_msg = goldo_msgs.msg.Markers()
     markers_msg.markers = [goldo_msgs.msg.Marker(id=k, type=0, position=goldo_msgs.msg.Vector2D(v['x']*0.001, v['y']*0.001), yaw=v['yaw'] * math.pi/180) for k,v in markers.items()]    
     pub_markers.publish(markers_msg)
     
+    if rospy.has_param('polygons'):
+        polygons = rospy.get_param('polygons')
+    else:
+        polygons = {}
+    polygons_msg = goldo_msgs.msg.Polygons()
+    polygons_msg.polygons = [goldo_msgs.msg.Polygon(id=k, type=0, vertices=[goldo_msgs.msg.Vector2D(vert[0], vert[1]) for vert in v['vertices']]) for k,v in polygons.items()]    
+    pub_polygons.publish(polygons_msg)
 
+    rospack = rospkg.RosPack()
+    rospy.loginfo(rospack.get_path('goldo_strategy'))
+    
+    # Test trajectory
+    trajectory = goldo_msgs.msg.Trajectory([goldo_msgs.msg.Vector2D(0,0), goldo_msgs.msg.Vector2D(0.5,0), goldo_msgs.msg.Vector2D(1,0.5), goldo_msgs.msg.Vector2D(1,1.5)])
+    rospy.ServiceProxy('/goldo/propulsion/execute_trajectory', goldo_msgs.srv.PropulsionExecuteTrajectory)(trajectory, 0.5,1,1)
     
     while not rospy.is_shutdown():
-        hello_str = "hello world %s" % rospy.get_time()
-        rospy.loginfo(hello_str)
-        pub.publish(hello_str)
         rate.sleep()
  
 if __name__ == '__main__':
